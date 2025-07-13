@@ -16,6 +16,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState('rate'); // rate, fee, speed
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [filterCategory, setFilterCategory] = useState('all'); // all, digital, traditional, crypto, regional
 
   // Fetch currencies on component mount
   useEffect(() => {
@@ -76,18 +77,27 @@ function App() {
     setSortBy(newSortBy);
   };
 
-  const sortedProviders = rates ? [...rates].sort((a, b) => {
-    switch (sortBy) {
-      case 'rate':
-        return b.rate - a.rate;
-      case 'fee':
-        return a.fee - b.fee;
-      case 'speed':
-        return a.transferSpeed.localeCompare(b.transferSpeed);
-      default:
-        return 0;
-    }
-  }) : [];
+  const filteredAndSortedProviders = rates ? [...rates]
+    .filter(provider => {
+      if (filterCategory === 'all') return true;
+      if (filterCategory === 'digital' && ['wise', 'revolut', 'n26', 'monzo', 'transfergo', 'stripe', 'paypal', 'square-cash'].includes(provider.id)) return true;
+      if (filterCategory === 'traditional' && ['western-union', 'moneygram', 'citibank', 'hsbc', 'barclays', 'hdfc-bank', 'icici-bank', 'sbi'].includes(provider.id)) return true;
+      if (filterCategory === 'crypto' && ['coinbase', 'binance'].includes(provider.id)) return true;
+      if (filterCategory === 'regional' && ['ria-money-transfer', 'small-world', 'worldremit', 'azimo', 'paytm-money', 'phonepe', 'google-pay'].includes(provider.id)) return true;
+      return false;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'rate':
+          return b.rate - a.rate;
+        case 'fee':
+          return a.fee - b.fee;
+        case 'speed':
+          return a.transferSpeed.localeCompare(b.transferSpeed);
+        default:
+          return 0;
+      }
+    }) : [];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -169,14 +179,26 @@ function App() {
           />
         )}
 
-        {/* Sort Controls */}
+        {/* Sort and Filter Controls */}
         {rates && rates.length > 0 && (
           <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">
-                Provider Comparison
+                Provider Comparison ({filteredAndSortedProviders.length} providers)
               </h3>
               <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-600">Filter:</span>
+                <select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Providers</option>
+                  <option value="digital">Digital/Fintech</option>
+                  <option value="traditional">Traditional Banks</option>
+                  <option value="crypto">Cryptocurrency</option>
+                  <option value="regional">Regional Specialists</option>
+                </select>
                 <span className="text-sm text-gray-600">Sort by:</span>
                 <select
                   value={sortBy}
@@ -197,7 +219,7 @@ function App() {
           <LoadingSpinner />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sortedProviders.map((provider) => (
+            {filteredAndSortedProviders.map((provider) => (
               <ProviderCard
                 key={provider.id}
                 provider={provider}

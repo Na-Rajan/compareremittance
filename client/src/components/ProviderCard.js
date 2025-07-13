@@ -95,6 +95,23 @@ const ProviderCard = ({ provider, fromCurrency, toCurrency, amount }) => {
           </span>
         </div>
 
+        {/* Features */}
+        {provider.features && provider.features.length > 0 && (
+          <div className="mb-4">
+            <div className="text-sm text-gray-600 mb-2">Key Features:</div>
+            <div className="flex flex-wrap gap-1">
+              {provider.features.map((feature, index) => (
+                <span
+                  key={index}
+                  className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                >
+                  {feature}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Offers */}
         {provider.offers && provider.offers.length > 0 && (
           <div className="space-y-2">
