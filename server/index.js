@@ -717,9 +717,9 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// Update rates every 5 minutes
-cron.schedule('*/5 * * * *', async () => {
-  console.log('Updating exchange rates...');
+// Update rates every day at 4PM
+cron.schedule('0 16 * * *', async () => {
+  console.log('Updating exchange rates at 4PM...');
   try {
     // Test a common currency pair to ensure APIs are working
     const testRate = await getExchangeRates('USD', 'INR');
