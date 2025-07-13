@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remittance Rate Comparison</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeIn 0.5s ease-out; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center">
+                    <svg class="h-8 w-8 text-blue-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
+                    <h1 class="text-2xl font-bold text-gray-900">
+                        Remittance Rate Comparison
+                    </h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="refreshBtn" class="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        Refresh
+                    </button>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="autoRefresh" checked class="mr-2">
+                        <span class="text-sm text-gray-600">Auto-refresh</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Currency Selection -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Select Currencies</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">From</label>
+                    <select id="fromCurrency" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="USD">USD - US Dollar</option>
+                        <option value="EUR">EUR - Euro</option>
+                        <option value="GBP">GBP - British Pound</option>
+                        <option value="CAD">CAD - Canadian Dollar</option>
+                        <option value="AUD">AUD - Australian Dollar</option>
+                        <option value="INR">INR - Indian Rupee</option>
+                        <option value="MXN">MXN - Mexican Peso</option>
+                        <option value="PHP">PHP - Philippine Peso</option>
+                        <option value="NGN">NGN - Nigerian Naira</option>
+                        <option value="BRL">BRL - Brazilian Real</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">To</label>
+                    <select id="toCurrency" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="INR">INR - Indian Rupee</option>
+                        <option value="USD">USD - US Dollar</option>
+                        <option value="EUR">EUR - Euro</option>
+                        <option value="GBP">GBP - British Pound</option>
+                        <option value="CAD">CAD - Canadian Dollar</option>
+                        <option value="AUD">AUD - Australian Dollar</option>
+                        <option value="MXN">MXN - Mexican Peso</option>
+                        <option value="PHP">PHP - Philippine Peso</option>
+                        <option value="NGN">NGN - Nigerian Naira</option>
+                        <option value="BRL">BRL - Brazilian Real</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Amount</label>
+                    <input type="number" id="amount" value="1000" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter amount">
+                </div>
+            </div>
+        </div>
+
+        <!-- Market Rate Card -->
+        <div id="marketRateCard" class="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-lg p-6 mb-8 text-white fade-in" style="display: none;">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <svg class="h-8 w-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
+                    <div>
+                        <h2 class="text-2xl font-bold">Live Market Rate</h2>
+                        <p class="text-blue-100" id="marketRatePair"></p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-3xl font-bold" id="marketRateValue"></div>
+                    <div class="text-blue-100 text-sm" id="marketRateCalculation"></div>
+                </div>
+            </div>
+            <div class="mt-4 flex items-center justify-between text-blue-100">
+                <div class="flex items-center">
+                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="text-sm" id="lastUpdated"></span>
+                </div>
+                <div class="text-sm">Rates update every 5 minutes</div>
+            </div>
+        </div>
+
+        <!-- Sort Controls -->
+        <div id="sortControls" class="bg-white rounded-lg shadow-sm p-4 mb-6" style="display: none;">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Provider Comparison</h3>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-600">Sort by:</span>
+                    <select id="sortBy" class="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="rate">Best Rate</option>
+                        <option value="fee">Lowest Fee</option>
+                        <option value="speed">Transfer Speed</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Provider Cards -->
+        <div id="providerCards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="flex justify-center items-center py-12" style="display: none;">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <span class="ml-3 text-gray-600">Loading rates...</span>
+        </div>
+
+        <!-- No Results -->
+        <div id="noResults" class="text-center py-12" style="display: none;">
+            <svg class="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+            </svg>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">No providers available</h3>
+            <p class="text-gray-600">Try selecting different currencies or check back later.</p>
+        </div>
+    </div>
+
+    <script>
+        // Mock data for providers
+        const providers = [
+            {
+                id: 'wise',
+                name: 'Wise',
+                rating: 4.8,
+                transferSpeed: '1-2 days',
+                minAmount: 1,
+                maxAmount: 1000000,
+                offers: [
+                    {
+                        type: 'first-time',
+                        description: 'No fees on your first transfer up to $500',
+                        validUntil: '2024-12-31'
+                    }
+                ]
+            },
+            {
+                id: 'xoom',
+                name: 'Xoom',
+                rating: 4.5,
+                transferSpeed: 'Same day',
+                minAmount: 5,
+                maxAmount: 50000,
+                offers: [
+                    {
+                        type: 'promo',
+                        description: 'Zero fees on transfers over $1000',
+                        validUntil: '2024-11-30'
+                    }
+                ]
+            },
+            {
+                id: 'remitly',
+                name: 'Remitly',
+                rating: 4.6,
+                transferSpeed: 'Same day',
+                minAmount: 1,
+                maxAmount: 100000,
+                offers: [
+                    {
+                        type: 'first-time',
+                        description: 'Free transfer on your first $100',
+                        validUntil: '2024-12-31'
+                    }
+                ]
+            },
+            {
+                id: 'western-union',
+                name: 'Western Union',
+                rating: 4.2,
+                transferSpeed: 'Same day',
+                minAmount: 1,
+                maxAmount: 50000,
+                offers: []
+            },
+            {
+                id: 'moneygram',
+                name: 'MoneyGram',
+                rating: 4.3,
+                transferSpeed: 'Same day',
+                minAmount: 1,
+                maxAmount: 10000,
+                offers: [
+                    {
+                        type: 'promo',
+                        description: 'Reduced fees for transfers over $500',
+                        validUntil: '2024-10-31'
+                    }
+                ]
+            }
+        ];
+
+        // Mock exchange rates
+        const baseRates = {
+            'USD-INR': { rate: 83.25, lastUpdated: new Date() },
+            'USD-EUR': { rate: 0.92, lastUpdated: new Date() },
+            'USD-GBP': { rate: 0.79, lastUpdated: new Date() },
+            'USD-CAD': { rate: 1.35, lastUpdated: new Date() },
+            'USD-AUD': { rate: 1.52, lastUpdated: new Date() },
+            'EUR-INR': { rate: 90.45, lastUpdated: new Date() },
+            'GBP-INR': { rate: 105.30, lastUpdated: new Date() },
+            'CAD-INR': { rate: 61.67, lastUpdated: new Date() },
+            'AUD-INR': { rate: 54.77, lastUpdated: new Date() }
+        };
+
+        function getExchangeRates(fromCurrency, toCurrency) {
+            const key = `${fromCurrency}-${toCurrency}`;
+            return baseRates[key] || { rate: 1, lastUpdated: new Date() };
+        }
+
+        function getProviderRates(fromCurrency, toCurrency, amount) {
+            const marketRate = getExchangeRates(fromCurrency, toCurrency);
+            
+            return providers.map(provider => {
+                const rateVariation = (Math.random() - 0.5) * 0.02;
+                const providerRate = marketRate.rate * (1 + rateVariation);
+                
+                let fee = 0;
+                if (provider.id === 'wise') {
+                    fee = amount * 0.007;
+                } else if (provider.id === 'xoom') {
+                    fee = amount * 0.008;
+                } else if (provider.id === 'remitly') {
+                    fee = amount * 0.006;
+                } else if (provider.id === 'western-union') {
+                    fee = amount * 0.01;
+                } else if (provider.id === 'moneygram') {
+                    fee = amount * 0.009;
+                }
+
+                const hasFirstTimeOffer = provider.offers.some(offer => offer.type === 'first-time');
+                if (hasFirstTimeOffer) {
+                    fee = Math.max(0, fee - 5);
+                }
+
+                const finalAmount = (amount - fee) * providerRate;
+                
+                return {
+                    ...provider,
+                    rate: providerRate,
+                    fee: fee,
+                    finalAmount: finalAmount,
+                    amountReceived: finalAmount,
+                    totalCost: amount,
+                    effectiveRate: finalAmount / amount
+                };
+            });
+        }
+
+        function formatCurrency(value, currency) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: currency,
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            }).format(value);
+        }
+
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+        }
+
+        function isOfferExpired(validUntil) {
+            return new Date(validUntil) < new Date();
+        }
+
+        function getRatingColor(rating) {
+            if (rating >= 4.5) return 'text-green-600';
+            if (rating >= 4.0) return 'text-yellow-600';
+            return 'text-red-600';
+        }
+
+        function updateMarketRateCard(marketRate, fromCurrency, toCurrency, amount) {
+            const marketRateCard = document.getElementById('marketRateCard');
+            const marketRatePair = document.getElementById('marketRatePair');
+            const marketRateValue = document.getElementById('marketRateValue');
+            const marketRateCalculation = document.getElementById('marketRateCalculation');
+            const lastUpdated = document.getElementById('lastUpdated');
+
+            marketRatePair.textContent = `${fromCurrency} to ${toCurrency}`;
+            marketRateValue.textContent = marketRate.rate.toFixed(4);
+            marketRateCalculation.textContent = `${formatCurrency(amount, fromCurrency)} = ${formatCurrency(amount * marketRate.rate, toCurrency)}`;
+            lastUpdated.textContent = `Last updated: ${formatDate(marketRate.lastUpdated)}`;
+            marketRateCard.style.display = 'block';
+        }
+
+        function createProviderCard(provider, fromCurrency, toCurrency, amount) {
+            const card = document.createElement('div');
+            card.className = 'bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200 fade-in';
+            
+            card.innerHTML = `
+                <div class="p-6 border-b border-gray-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                                <span class="text-lg font-bold text-gray-600">${provider.name.charAt(0)}</span>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900">${provider.name}</h3>
+                                <div class="flex items-center">
+                                    <svg class="h-4 w-4 ${getRatingColor(provider.rating)} mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                                    </svg>
+                                    <span class="text-sm text-gray-600">
+                                        ${provider.rating} (${provider.rating >= 4.5 ? 'Excellent' : provider.rating >= 4.0 ? 'Good' : 'Fair'})
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-gray-900">${provider.rate.toFixed(4)}</div>
+                        <div class="text-sm text-gray-600">${fromCurrency} to ${toCurrency} rate</div>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div class="space-y-3 mb-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">You send:</span>
+                            <span class="font-medium">${formatCurrency(amount, fromCurrency)}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Fee:</span>
+                            <span class="font-medium text-red-600">-${formatCurrency(provider.fee, fromCurrency)}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">You receive:</span>
+                            <span class="font-medium text-green-600">${formatCurrency(provider.amountReceived, toCurrency)}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center mb-4 p-3 bg-gray-50 rounded-lg">
+                        <svg class="h-4 w-4 text-gray-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="text-sm text-gray-700">
+                            Transfer speed: <span class="font-medium">${provider.transferSpeed}</span>
+                        </span>
+                    </div>
+                    ${provider.offers && provider.offers.length > 0 ? `
+                        <div class="space-y-2">
+                            ${provider.offers.map(offer => `
+                                <div class="p-3 rounded-lg border ${
+                                    isOfferExpired(offer.validUntil)
+                                        ? 'bg-gray-50 border-gray-200'
+                                        : offer.type === 'first-time'
+                                        ? 'bg-green-50 border-green-200'
+                                        : 'bg-blue-50 border-blue-200'
+                                }">
+                                    <div class="flex items-start">
+                                        <svg class="h-4 w-4 mr-2 mt-0.5 ${
+                                            isOfferExpired(offer.validUntil)
+                                                ? 'text-gray-400'
+                                                : offer.type === 'first-time'
+                                                ? 'text-green-600'
+                                                : 'text-blue-600'
+                                        }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H6a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V9a2 2 0 00-2-2H6z"></path>
+                                        </svg>
+                                        <div class="flex-1">
+                                            <div class="text-sm font-medium ${
+                                                isOfferExpired(offer.validUntil)
+                                                    ? 'text-gray-500'
+                                                    : offer.type === 'first-time'
+                                                    ? 'text-green-800'
+                                                    : 'text-blue-800'
+                                            }">${offer.description}</div>
+                                            <div class="flex items-center mt-1">
+                                                <span class="text-xs ${
+                                                    isOfferExpired(offer.validUntil)
+                                                        ? 'text-gray-400'
+                                                        : 'text-gray-600'
+                                                }">Valid until: ${new Date(offer.validUntil).toLocaleDateString('en-US', {
+                                                    year: 'numeric',
+                                                    month: 'short',
+                                                    day: 'numeric',
+                                                })}</span>
+                                                ${isOfferExpired(offer.validUntil) ? `
+                                                    <svg class="h-3 w-3 text-red-500 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                                    </svg>
+                                                ` : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    <button class="w-full mt-4 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-200">
+                        Send Money with ${provider.name}
+                    </button>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        function updateRates() {
+            const fromCurrency = document.getElementById('fromCurrency').value;
+            const toCurrency = document.getElementById('toCurrency').value;
+            const amount = parseFloat(document.getElementById('amount').value) || 1000;
+            const sortBy = document.getElementById('sortBy').value;
+
+            // Show loading
+            document.getElementById('loadingSpinner').style.display = 'flex';
+            document.getElementById('providerCards').innerHTML = '';
+            document.getElementById('noResults').style.display = 'none';
+
+            // Simulate API delay
+            setTimeout(() => {
+                const marketRate = getExchangeRates(fromCurrency, toCurrency);
+                const providerRates = getProviderRates(fromCurrency, toCurrency, amount);
+
+                // Update market rate card
+                updateMarketRateCard(marketRate, fromCurrency, toCurrency, amount);
+
+                // Sort providers
+                const sortedProviders = [...providerRates].sort((a, b) => {
+                    switch (sortBy) {
+                        case 'rate':
+                            return b.rate - a.rate;
+                        case 'fee':
+                            return a.fee - b.fee;
+                        case 'speed':
+                            return a.transferSpeed.localeCompare(b.transferSpeed);
+                        default:
+                            return 0;
+                    }
+                });
+
+                // Show sort controls
+                document.getElementById('sortControls').style.display = 'block';
+
+                // Update provider cards
+                const providerCardsContainer = document.getElementById('providerCards');
+                providerCardsContainer.innerHTML = '';
+
+                if (sortedProviders.length > 0) {
+                    sortedProviders.forEach(provider => {
+                        const card = createProviderCard(provider, fromCurrency, toCurrency, amount);
+                        providerCardsContainer.appendChild(card);
+                    });
+                } else {
+                    document.getElementById('noResults').style.display = 'block';
+                }
+
+                // Hide loading
+                document.getElementById('loadingSpinner').style.display = 'none';
+            }, 500);
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initial load
+            updateRates();
+
+            // Currency and amount change
+            document.getElementById('fromCurrency').addEventListener('change', updateRates);
+            document.getElementById('toCurrency').addEventListener('change', updateRates);
+            document.getElementById('amount').addEventListener('input', updateRates);
+            document.getElementById('sortBy').addEventListener('change', updateRates);
+
+            // Refresh button
+            document.getElementById('refreshBtn').addEventListener('click', updateRates);
+
+            // Auto-refresh
+            let autoRefreshInterval;
+            document.getElementById('autoRefresh').addEventListener('change', function(e) {
+                if (e.target.checked) {
+                    autoRefreshInterval = setInterval(updateRates, 5 * 60 * 1000); // 5 minutes
+                } else {
+                    clearInterval(autoRefreshInterval);
+                }
+            });
+
+            // Start auto-refresh if checked
+            if (document.getElementById('autoRefresh').checked) {
+                autoRefreshInterval = setInterval(updateRates, 5 * 60 * 1000);
+            }
+        });
+    </script>
+</body>
+</html> 
