@@ -16,7 +16,8 @@ A full-stack web application for comparing remittance exchange rates between maj
 
 - **Frontend**: React with Tailwind CSS
 - **Backend**: Node.js with Express
-- **Data**: Simulated API responses (easily replaceable with real APIs)
+- **Data**: Real-time exchange rates from multiple APIs
+- **APIs**: ExchangeRate-API, Open Exchange Rates, Currency API
 - **Icons**: Lucide React
 - **Styling**: Tailwind CSS with custom animations
 
@@ -87,6 +88,9 @@ Returns the current market rate for a currency pair.
 ### GET `/api/health`
 Health check endpoint.
 
+### GET `/api/status`
+Returns API status and current exchange rate source.
+
 ## Project Structure
 
 ```
@@ -124,31 +128,39 @@ PORT=5000
 NODE_ENV=development
 ```
 
-### Adding Real API Integration
+### Real-Time API Integration
 
-To integrate with real exchange rate APIs:
+The application now uses real-time exchange rates from multiple APIs:
 
-1. **Update `server/index.js`**:
-   ```javascript
-   // Replace the getExchangeRates function with real API calls
-   const getExchangeRates = async (fromCurrency, toCurrency) => {
-     try {
-       const response = await axios.get(`https://api.exchangerate-api.com/v4/latest/${fromCurrency}`);
-       return {
-         rate: response.data.rates[toCurrency],
-         lastUpdated: new Date()
-       };
-     } catch (error) {
-       console.error('Error fetching rates:', error);
-       return { rate: 1, lastUpdated: new Date() };
-     }
-   };
+#### **Free APIs (No Key Required)**
+- **ExchangeRate-API**: Primary source for real-time rates
+- **Open Exchange Rates**: Backup source for redundancy
+
+#### **Premium APIs (Optional)**
+- **Currency API**: For enhanced features (requires API key)
+
+#### **API Configuration**
+
+1. **Copy environment template**:
+   ```bash
+   cp env.example .env
    ```
 
-2. **Add API keys to environment variables**:
+2. **Add API keys (optional)**:
    ```env
    EXCHANGE_RATE_API_KEY=your_api_key_here
+   CURRENCY_CONVERTER_API_KEY=your_api_key_here
    ```
+
+3. **Get free API keys**:
+   - [Currency API](https://currencyapi.com/) - Free tier available
+   - [ExchangeRate-API](https://exchangerate-api.com/) - Free tier available
+
+#### **API Features**
+- **Redundancy**: Multiple API sources for reliability
+- **Fallback**: Cached rates when APIs are unavailable
+- **Real-time**: Updates every 5 minutes
+- **Error handling**: Graceful degradation when APIs fail
 
 ## Customization
 

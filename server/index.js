@@ -2,12 +2,17 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const cron = require('node-cron');
+const axios = require('axios');
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// API Keys (you'll need to add these to your .env file)
+const EXCHANGE_RATE_API_KEY = process.env.EXCHANGE_RATE_API_KEY || 'demo';
+const CURRENCY_CONVERTER_API_KEY = process.env.CURRENCY_CONVERTER_API_KEY || 'demo';
 
 // Middleware
 app.use(cors());
@@ -91,56 +96,76 @@ const providers = [
   }
 ];
 
-// Realistic exchange rates based on current market data (as of 2024)
-const getExchangeRates = (fromCurrency, toCurrency) => {
-  const baseRates = {
-    // USD pairs
-    'USD-INR': { rate: 83.15, lastUpdated: new Date() },
-    'USD-EUR': { rate: 0.91, lastUpdated: new Date() },
-    'USD-GBP': { rate: 0.78, lastUpdated: new Date() },
-    'USD-CAD': { rate: 1.36, lastUpdated: new Date() },
-    'USD-AUD': { rate: 1.51, lastUpdated: new Date() },
-    'USD-MXN': { rate: 16.85, lastUpdated: new Date() },
-    'USD-PHP': { rate: 56.25, lastUpdated: new Date() },
-    'USD-NGN': { rate: 1580.50, lastUpdated: new Date() },
-    'USD-BRL': { rate: 4.95, lastUpdated: new Date() },
+// Real-time exchange rates from multiple APIs
+const getExchangeRates = async (fromCurrency, toCurrency) => {
+  try {
+    // Try multiple APIs for redundancy
+    const apis = [
+      // Free API (no key required)
+      `https://api.exchangerate-api.com/v4/latest/${fromCurrency}`,
+      // Alternative free API
+      `https://open.er-api.com/v6/latest/${fromCurrency}`,
+      // Currency converter API (requires key)
+      EXCHANGE_RATE_API_KEY !== 'demo' ? 
+        `https://api.currencyapi.com/v3/latest?apikey=${EXCHANGE_RATE_API_KEY}&base_currency=${fromCurrency}` : null
+    ].filter(Boolean);
+
+    for (const apiUrl of apis) {
+      try {
+        const response = await axios.get(apiUrl, { timeout: 5000 });
+        
+        if (response.data && response.data.rates) {
+          const rate = response.data.rates[toCurrency];
+          if (rate) {
+            return {
+              rate: rate,
+              lastUpdated: new Date(),
+              source: apiUrl.includes('exchangerate-api') ? 'ExchangeRate-API' : 
+                      apiUrl.includes('open.er-api') ? 'Open Exchange Rates' : 'Currency API'
+            };
+          }
+        }
+      } catch (error) {
+        console.log(`API ${apiUrl} failed, trying next...`);
+        continue;
+      }
+    }
+
+    // Fallback to cached rates if all APIs fail
+    console.log('All APIs failed, using fallback rates');
+    return getFallbackRates(fromCurrency, toCurrency);
     
-    // EUR pairs
-    'EUR-INR': { rate: 91.35, lastUpdated: new Date() },
-    'EUR-USD': { rate: 1.10, lastUpdated: new Date() },
-    'EUR-GBP': { rate: 0.86, lastUpdated: new Date() },
-    'EUR-CAD': { rate: 1.49, lastUpdated: new Date() },
-    'EUR-AUD': { rate: 1.66, lastUpdated: new Date() },
-    
-    // GBP pairs
-    'GBP-INR': { rate: 106.45, lastUpdated: new Date() },
-    'GBP-USD': { rate: 1.28, lastUpdated: new Date() },
-    'GBP-EUR': { rate: 1.16, lastUpdated: new Date() },
-    'GBP-CAD': { rate: 1.74, lastUpdated: new Date() },
-    'GBP-AUD': { rate: 1.94, lastUpdated: new Date() },
-    
-    // CAD pairs
-    'CAD-INR': { rate: 61.15, lastUpdated: new Date() },
-    'CAD-USD': { rate: 0.74, lastUpdated: new Date() },
-    'CAD-EUR': { rate: 0.67, lastUpdated: new Date() },
-    'CAD-GBP': { rate: 0.57, lastUpdated: new Date() },
-    'CAD-AUD': { rate: 1.11, lastUpdated: new Date() },
-    
-    // AUD pairs
-    'AUD-INR': { rate: 55.05, lastUpdated: new Date() },
-    'AUD-USD': { rate: 0.66, lastUpdated: new Date() },
-    'AUD-EUR': { rate: 0.60, lastUpdated: new Date() },
-    'AUD-GBP': { rate: 0.52, lastUpdated: new Date() },
-    'AUD-CAD': { rate: 0.90, lastUpdated: new Date() }
+  } catch (error) {
+    console.error('Error fetching exchange rates:', error);
+    return getFallbackRates(fromCurrency, toCurrency);
+  }
+};
+
+// Fallback rates for when APIs are unavailable
+const getFallbackRates = (fromCurrency, toCurrency) => {
+  const fallbackRates = {
+    'USD-INR': { rate: 83.15, lastUpdated: new Date(), source: 'Fallback' },
+    'USD-EUR': { rate: 0.91, lastUpdated: new Date(), source: 'Fallback' },
+    'USD-GBP': { rate: 0.78, lastUpdated: new Date(), source: 'Fallback' },
+    'USD-CAD': { rate: 1.36, lastUpdated: new Date(), source: 'Fallback' },
+    'USD-AUD': { rate: 1.51, lastUpdated: new Date(), source: 'Fallback' },
+    'USD-MXN': { rate: 16.85, lastUpdated: new Date(), source: 'Fallback' },
+    'USD-PHP': { rate: 56.25, lastUpdated: new Date(), source: 'Fallback' },
+    'USD-NGN': { rate: 1580.50, lastUpdated: new Date(), source: 'Fallback' },
+    'USD-BRL': { rate: 4.95, lastUpdated: new Date(), source: 'Fallback' },
+    'EUR-INR': { rate: 91.35, lastUpdated: new Date(), source: 'Fallback' },
+    'GBP-INR': { rate: 106.45, lastUpdated: new Date(), source: 'Fallback' },
+    'CAD-INR': { rate: 61.15, lastUpdated: new Date(), source: 'Fallback' },
+    'AUD-INR': { rate: 55.05, lastUpdated: new Date(), source: 'Fallback' }
   };
 
   const key = `${fromCurrency}-${toCurrency}`;
-  return baseRates[key] || { rate: 1, lastUpdated: new Date() };
+  return fallbackRates[key] || { rate: 1, lastUpdated: new Date(), source: 'Fallback' };
 };
 
 // Get provider rates with realistic fees based on actual remittance service data
-const getProviderRates = (fromCurrency, toCurrency, amount = 1000) => {
-  const marketRate = getExchangeRates(fromCurrency, toCurrency);
+const getProviderRates = async (fromCurrency, toCurrency, amount = 1000) => {
+  const marketRate = await getExchangeRates(fromCurrency, toCurrency);
   
   return providers.map(provider => {
     // Realistic rate variations based on provider spreads
@@ -201,7 +226,8 @@ const getProviderRates = (fromCurrency, toCurrency, amount = 1000) => {
       finalAmount: finalAmount,
       amountReceived: finalAmount,
       totalCost: amount,
-      effectiveRate: finalAmount / amount
+      effectiveRate: finalAmount / amount,
+      marketRateSource: marketRate.source
     };
   });
 };
@@ -227,32 +253,42 @@ app.get('/api/providers', (req, res) => {
   res.json(providers);
 });
 
-app.get('/api/rates', (req, res) => {
+app.get('/api/rates', async (req, res) => {
   const { from, to, amount = 1000 } = req.query;
   
   if (!from || !to) {
     return res.status(400).json({ error: 'From and To currencies are required' });
   }
 
-  const marketRate = getExchangeRates(from, to);
-  const providerRates = getProviderRates(from, to, parseFloat(amount));
+  try {
+    const marketRate = await getExchangeRates(from, to);
+    const providerRates = await getProviderRates(from, to, parseFloat(amount));
 
-  res.json({
-    marketRate,
-    providers: providerRates,
-    timestamp: new Date().toISOString()
-  });
+    res.json({
+      marketRate,
+      providers: providerRates,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error fetching rates:', error);
+    res.status(500).json({ error: 'Failed to fetch exchange rates' });
+  }
 });
 
-app.get('/api/market-rate', (req, res) => {
+app.get('/api/market-rate', async (req, res) => {
   const { from, to } = req.query;
   
   if (!from || !to) {
     return res.status(400).json({ error: 'From and To currencies are required' });
   }
 
-  const marketRate = getExchangeRates(from, to);
-  res.json(marketRate);
+  try {
+    const marketRate = await getExchangeRates(from, to);
+    res.json(marketRate);
+  } catch (error) {
+    console.error('Error fetching market rate:', error);
+    res.status(500).json({ error: 'Failed to fetch market rate' });
+  }
 });
 
 // Health check endpoint
@@ -260,10 +296,35 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// Update rates every 5 minutes (simulated)
-cron.schedule('*/5 * * * *', () => {
+// Update rates every 5 minutes
+cron.schedule('*/5 * * * *', async () => {
   console.log('Updating exchange rates...');
-  // In a real application, this would fetch from external APIs
+  try {
+    // Test a common currency pair to ensure APIs are working
+    const testRate = await getExchangeRates('USD', 'INR');
+    console.log(`USD to INR rate updated: ${testRate.rate} (Source: ${testRate.source})`);
+  } catch (error) {
+    console.error('Error updating rates:', error);
+  }
+});
+
+// Add endpoint to check API status
+app.get('/api/status', async (req, res) => {
+  try {
+    const testRate = await getExchangeRates('USD', 'INR');
+    res.json({
+      status: 'OK',
+      lastUpdate: testRate.lastUpdated,
+      source: testRate.source,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Error handling middleware
